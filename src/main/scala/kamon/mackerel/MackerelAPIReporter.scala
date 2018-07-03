@@ -34,7 +34,7 @@ class MackerelAPIReporter extends MetricReporter {
   }
 
   override def reportPeriodSnapshot(snapshot: PeriodSnapshot): Unit =
-    buildRequestBody(snapshot).grouped(20).foreach { posts =>
+    buildRequestBody(snapshot).grouped(10).foreach { posts =>
       val body = RequestBody.create(jsonType, posts.asJson.noSpaces)
       val request = new Request.Builder()
         .url(configuration.apiUrl)
@@ -46,6 +46,10 @@ class MackerelAPIReporter extends MetricReporter {
       if (!response.isSuccessful) {
         logger.error(
           s"Failed to POST metrics to Mackerel with status code [${response.code()}], Body: [${response.body().string()}]"
+        )
+      } else {
+        logger.debug(
+          s"Success to POST metrics to Mackerel with status code [${response.code()}]"
         )
       }
 
