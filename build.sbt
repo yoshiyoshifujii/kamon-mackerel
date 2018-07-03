@@ -1,13 +1,20 @@
-val kamonCore     = "io.kamon"      %% "kamon-core"             % "1.1.3"
-val kamonTestKit  = "io.kamon"      %% "kamon-testkit"          % "1.1.3"
+val kamonVersion = "1.1.3"
+val circeVersion = "0.9.3"
+
+val kamonCore       = "io.kamon"             %% "kamon-core"    % kamonVersion
+val kamonTestKit    = "io.kamon"             %% "kamon-testkit" % kamonVersion
+val asyncHttpClient = "com.squareup.okhttp3" % "okhttp"         % "3.10.0"
+val circeCore       = "io.circe"             %% "circe-core"    % circeVersion
+val circeGeneric    = "io.circe"             %% "circe-generic" % circeVersion
+val circeParser     = "io.circe"             %% "circe-parser"  % circeVersion
 
 lazy val root = (project in file("."))
   .settings(name := "kamon-mackerel")
   .settings(mavenCentral: _*)
   .settings(
     libraryDependencies ++=
-      compileScope(kamonCore, awsCloudWatch, scalaCompact.value) ++
-        testScope(scalatest, slf4jApi, slf4jnop, kamonCore, kamonTestKit)
+      compileScope(kamonCore, asyncHttpClient, circeCore, circeGeneric, circeParser, scalaCompact.value) ++
+      testScope(scalatest, slf4jApi, slf4jnop, kamonCore, kamonTestKit)
   )
 
 def scalaCompact = Def.setting {
