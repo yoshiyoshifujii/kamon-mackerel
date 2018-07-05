@@ -5,9 +5,9 @@ import java.util.concurrent.TimeUnit
 
 import com.typesafe.config.Config
 import io.circe.syntax._
-import kamon.metric.{MetricDistribution, MetricValue, PeriodSnapshot}
-import kamon.{Kamon, MetricReporter, Tags}
-import okhttp3.{MediaType, OkHttpClient, Request, RequestBody}
+import kamon.metric.{ MetricDistribution, MetricValue, PeriodSnapshot }
+import kamon.{ Kamon, MetricReporter, Tags }
+import okhttp3.{ MediaType, OkHttpClient, Request, RequestBody }
 import org.slf4j.LoggerFactory
 
 class MackerelAPIReporter extends MetricReporter {
@@ -34,32 +34,27 @@ class MackerelAPIReporter extends MetricReporter {
   }
 
   override def reportPeriodSnapshot(snapshot: PeriodSnapshot): Unit =
-    buildRequestBody(snapshot).grouped(10).foreach { posts =>
-      val body = RequestBody.create(jsonType, posts.asJson.noSpaces)
-      val request = new Request.Builder()
-        .url(configuration.apiUrl)
-        .header(headerApiKey, configuration.apiKey)
-        .post(body)
-        .build
-      val response = httpClient.newCall(request).execute()
+    buildRequestBody(snapshot).grouped(10).foreach(send)
 
-      if (!response.isSuccessful) {
-        logger.error(
-          s"Failed to POST metrics to Mackerel with status code [${response.code()}], Body: [${response.body().string()}]"
-        )
-      } else {
-        logger.debug(
-          s"Success to POST metrics to Mackerel with status code [${response.code()}]"
-        )
-      }
+  private[mackerel] def send(posts: Seq[PostTSDBMetricValue]): Unit = {
+    val body = RequestBody.create(jsonType, posts.asJson.noSpaces)
+    val request = new Request.Builder()
+      .url(postTSDBUrl(configuration))
+      .header(headerApiKey, configuration.apiKey)
+      .post(body)
+      .build
+    val response = httpClient.newCall(request).execute()
 
-      response.close()
-    }
+    if (!response.isSuccessful)
+      println(
+        s"Failed to POST metrics to Mackerel with status code [${response.code()}], Body: [${response.body().string()}]"
+      )
 
-  private[mackerel] def buildRequestBody(snapshot: PeriodSnapshot): Seq[String] = {
+    response.close()
+  }
 
-    val hostId = configuration.hostId
-
+  private[mackerel] def buildRequestBody(snapshot: PeriodSnapshot): Seq[PostTSDBMetricValue] = {
+    val hostId    = configuration.hostId
     val timestamp = snapshot.from.getEpochSecond
 
     def mkTags(tags: Tags): String =
@@ -78,7 +73,7 @@ class MackerelAPIReporter extends MetricReporter {
       def add(suffix: String, value: Long): PostTSDBMetricValue =
         PostTSDBMetricValue(
           hostId = hostId,
-          name = s"${metricDistribution.name}.$suffix.${mkTags(metricDistribution.tags)}",
+          name = s"custom.${metricDistribution.name}.$suffix.${mkTags(metricDistribution.tags)}",
           time = timestamp,
           value = value
         )
@@ -95,13 +90,10 @@ class MackerelAPIReporter extends MetricReporter {
       else Seq.empty
     }
 
-    val converts: Seq[PostTSDBMetricValue] =
     snapshot.metrics.counters.map(convertToValue) ++
     snapshot.metrics.gauges.map(convertToValue) ++
     snapshot.metrics.histograms.flatMap(convertToDistribution) ++
     snapshot.metrics.rangeSamplers.flatMap(convertToDistribution)
-
-    converts.map(_.asJson.noSpaces)
   }
 
   private def createHttpClient(config: Configuration): OkHttpClient =
@@ -146,4 +138,7 @@ private object MackerelAPIReporter {
   case class PostTSDBMetricValue(hostId: String, name: String, time: Long, value: Long)
   implicit val decodePostTSDBMetricValue: Decoder[PostTSDBMetricValue] = deriveDecoder[PostTSDBMetricValue]
   implicit val encodePostTSDBMetricValue: Encoder[PostTSDBMetricValue] = deriveEncoder[PostTSDBMetricValue]
+
+  def postTSDBUrl(configuration: Configuration): String =
+    s"${configuration.apiUrl}$postTSDB"
 }
