@@ -46,7 +46,7 @@ class MackerelAPIReporter extends MetricReporter {
     val response = httpClient.newCall(request).execute()
 
     if (!response.isSuccessful)
-      println(
+      logger.error(
         s"Failed to POST metrics to Mackerel with status code [${response.code()}], Body: [${response.body().string()}]"
       )
 
@@ -63,7 +63,7 @@ class MackerelAPIReporter extends MetricReporter {
     def convertToValue(metricValue: MetricValue): PostTSDBMetricValue =
       PostTSDBMetricValue(
         hostId = hostId,
-        name = s"${metricValue.name}.${mkTags(metricValue.tags)}",
+        name = s"custom.${metricValue.name}.${mkTags(metricValue.tags)}",
         time = timestamp,
         value = metricValue.value
       )
