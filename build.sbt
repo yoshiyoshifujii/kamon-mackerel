@@ -7,6 +7,7 @@ val asyncHttpClient = "com.squareup.okhttp3" % "okhttp"         % "3.10.0"
 val circeCore       = "io.circe"             %% "circe-core"    % circeVersion
 val circeGeneric    = "io.circe"             %% "circe-generic" % circeVersion
 val circeParser     = "io.circe"             %% "circe-parser"  % circeVersion
+val scalacheck      = "org.scalacheck"       %% "scalacheck"    % "1.13.4"
 
 lazy val root = (project in file("."))
   .settings(name := "kamon-mackerel")
@@ -14,7 +15,7 @@ lazy val root = (project in file("."))
   .settings(
     libraryDependencies ++=
       compileScope(kamonCore, asyncHttpClient, circeCore, circeGeneric, circeParser, scalaCompact.value) ++
-      testScope(scalatest, slf4jApi, slf4jnop, kamonCore, kamonTestKit)
+      testScope(scalatest, scalacheck, slf4jApi, slf4jnop, kamonCore, kamonTestKit)
   )
 
 def scalaCompact = Def.setting {
